@@ -428,15 +428,14 @@
 </footer>
 
 <script>
-  const PROXY = 'https://api.allorigins.win/raw?url=';
-  const KEV_URL = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
+  // Data served via Cloudflare Pages Functions (no CORS issues)
 
   let allVulns = [];
   let activeFilter = 'all';
 
   async function init() {
     try {
-      const res = await fetch(PROXY + encodeURIComponent(KEV_URL));
+      const res = await fetch('/api/kev');
       const data = await res.json();
       const vulns = (data.vulnerabilities || [])
         .sort((a,b) => new Date(b.dateAdded) - new Date(a.dateAdded));
@@ -598,29 +597,15 @@
   }
 
 
-  const OTX_KEY = '1e6d0121df63f01a5bad26056a8fd7bff07907d27b187a5fc036a25c35f2b95b';
-
   async function fetchOTX() {
     try {
-      const url = `https://otx.alienvault.com/api/v1/pulses/subscribed?limit=10&page=1`;
-      const res = await fetch(PROXY + encodeURIComponent(url), {
-        headers: { 'X-OTX-API-KEY': OTX_KEY }
-      });
+      const res = await fetch('/api/otx');
       const data = await res.json();
       const pulses = data.results || [];
       renderOTX(pulses);
     } catch(e) {
-      // Try direct (CORS may work from browser)
-      try {
-        const res2 = await fetch('https://otx.alienvault.com/api/v1/pulses/subscribed?limit=10', {
-          headers: { 'X-OTX-API-KEY': OTX_KEY }
-        });
-        const data2 = await res2.json();
-        renderOTX(data2.results || []);
-      } catch(e2) {
-        document.getElementById('otxList').innerHTML =
-          '<div class="loading">⚠ OTX data unavailable (CORS). Data loads in production.</div>';
-      }
+      document.getElementById('otxList').innerHTML =
+        '<div class="loading">⚠ OTX data unavailable. Please refresh.</div>';
     }
   }
 
