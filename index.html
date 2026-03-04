@@ -229,6 +229,30 @@
   .loading { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-light); opacity: 0.5; padding: 1rem 0; }
   .spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--green-accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
 
+
+  /* OTX PULSES */
+  .otx-list { display: flex; flex-direction: column; gap: 0.6rem; }
+  .otx-item {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.85rem 1.1rem;
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 1rem; align-items: start; transition: background 0.2s;
+  }
+  .otx-item:hover { background: rgba(255,255,255,0.06); }
+  .otx-name { font-size: 0.85rem; color: var(--text-light); line-height: 1.4; margin-bottom: 0.2rem; }
+  .otx-meta { font-size: 0.7rem; color: var(--text-light); opacity: 0.4; }
+  .otx-tags { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.35rem; }
+  .otx-tag {
+    background: rgba(124,184,124,0.1); border: 1px solid rgba(124,184,124,0.2);
+    color: var(--green-accent); font-size: 0.62rem; font-weight: 500;
+    padding: 1px 7px; border-radius: 100px; font-family: 'DM Mono', monospace;
+  }
+  .otx-indicators {
+    text-align: right; font-family: 'DM Mono', monospace;
+    font-size: 0.78rem; color: var(--white); white-space: nowrap;
+  }
+  .otx-ind-label { font-size: 0.62rem; color: var(--text-light); opacity: 0.45; margin-top: 0.15rem; }
+
   /* FOOTER */
   footer { border-top: 1px solid var(--border); padding: 1.5rem 2rem; text-align: center; font-size: 0.75rem; color: var(--text-light); opacity: 0.4; }
   footer a { color: var(--green-accent); text-decoration: none; opacity: 1; }
@@ -382,6 +406,14 @@
       </div>
       <div id="cveList">
         <div class="loading"><div class="spinner"></div> Fetching threat data from CISA...</div>
+      </div>
+    </div>
+
+    <!-- OTX THREAT PULSES -->
+    <div class="card">
+      <div class="card-title"><span class="live-dot"></span> AlienVault OTX — Active Threat Pulses</div>
+      <div id="otxList">
+        <div class="loading"><div class="spinner"></div> Fetching OTX threat pulses...</div>
       </div>
     </div>
 
@@ -565,7 +597,65 @@
     }
   }
 
+
+  const OTX_KEY = '1e6d0121df63f01a5bad26056a8fd7bff07907d27b187a5fc036a25c35f2b95b';
+
+  async function fetchOTX() {
+    try {
+      const url = `https://otx.alienvault.com/api/v1/pulses/subscribed?limit=10&page=1`;
+      const res = await fetch(PROXY + encodeURIComponent(url), {
+        headers: { 'X-OTX-API-KEY': OTX_KEY }
+      });
+      const data = await res.json();
+      const pulses = data.results || [];
+      renderOTX(pulses);
+    } catch(e) {
+      // Try direct (CORS may work from browser)
+      try {
+        const res2 = await fetch('https://otx.alienvault.com/api/v1/pulses/subscribed?limit=10', {
+          headers: { 'X-OTX-API-KEY': OTX_KEY }
+        });
+        const data2 = await res2.json();
+        renderOTX(data2.results || []);
+      } catch(e2) {
+        document.getElementById('otxList').innerHTML =
+          '<div class="loading">⚠ OTX data unavailable (CORS). Data loads in production.</div>';
+      }
+    }
+  }
+
+  function renderOTX(pulses) {
+    const list = document.getElementById('otxList');
+    if (!pulses.length) {
+      list.innerHTML = '<div class="loading">No active pulses found.</div>';
+      return;
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'otx-list';
+    pulses.forEach((p, i) => {
+      const tags = (p.tags || []).slice(0, 4);
+      const date = new Date(p.modified || p.created).toLocaleDateString();
+      const item = document.createElement('div');
+      item.className = 'otx-item fade-in';
+      item.style.animationDelay = `${i*25}ms`;
+      item.innerHTML = `
+        <div>
+          <div class="otx-name">${p.name}</div>
+          <div class="otx-meta">${p.author_name || 'OTX Community'} &middot; ${date}</div>
+          ${tags.length ? `<div class="otx-tags">${tags.map(t=>`<span class="otx-tag">${t}</span>`).join('')}</div>` : ''}
+        </div>
+        <div>
+          <div class="otx-indicators">${p.indicator_count || 0}</div>
+          <div class="otx-ind-label">indicators</div>
+        </div>`;
+      wrap.appendChild(item);
+    });
+    list.innerHTML = '';
+    list.appendChild(wrap);
+  }
+
   init();
+  fetchOTX();
   setInterval(init, 6 * 60 * 60 * 1000);
 </script>
 </body>
