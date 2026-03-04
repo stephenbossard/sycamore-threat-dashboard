@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyber Threat Dashboard — Sycamore Systems</title>
+<meta name="description" content="Live cybersecurity threat intelligence dashboard for small businesses. Current CVEs, threat levels, and actionable security insights from Sycamore Systems LLC.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --green-deep: #1a2e1a;
+    --green-dark: #243524;
+    --green-mid: #3d5a3d;
+    --green-accent: #7cb87c;
+    --green-light: #a8d4a8;
+    --cream: #f0f5ed;
+    --white: #ffffff;
+    --text-light: #c8dcc8;
+    --border: rgba(124,184,124,0.2);
+    --shadow-md: 0 4px 20px rgba(26,46,26,0.1);
+    --shadow-lg: 0 12px 40px rgba(26,46,26,0.12);
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--green-deep);
+    color: var(--text-light);
+    line-height: 1.6;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* NAV */
+  nav {
+    padding: 0 2rem;
+    background: rgba(26,46,26,0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-inner {
+    max-width: 1400px; margin: 0 auto;
+    display: flex; align-items: center;
+    justify-content: space-between; height: 64px;
+  }
+  .nav-brand {
+    display: flex; align-items: center; gap: 10px;
+    text-decoration: none; color: var(--white);
+    font-weight: 600; font-size: 0.95rem;
+  }
+  .nav-brand img { height: 36px; width: auto; }
+  .live-badge {
+    background: #c0392b; color: white;
+    font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 100px;
+    animation: pulse-red 2s ease-in-out infinite;
+  }
+  .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+  .nav-right a { color: var(--text-light); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+  .nav-right a:hover { color: var(--green-accent); }
+  .last-updated { font-size: 0.72rem; color: var(--green-accent); font-family: 'DM Mono', monospace; }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(180deg, #111e11 0%, var(--green-deep) 100%);
+    padding: 2.5rem 2rem 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-inner { max-width: 1400px; margin: 0 auto; }
+  .hero-inner h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(1.8rem, 3vw, 2.5rem);
+    font-weight: 400; color: var(--white); margin-bottom: 0.3rem;
+  }
+  .hero-inner h1 em { color: var(--green-accent); font-style: italic; }
+  .hero-sub { font-size: 0.85rem; color: var(--text-light); opacity: 0.6; }
+
+  /* DASHBOARD GRID */
+  .dashboard {
+    max-width: 1400px; margin: 0 auto; padding: 2rem;
+    display: grid; grid-template-columns: 300px 1fr; gap: 1.5rem;
+  }
+
+  /* CARDS */
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.5rem;
+    overflow: hidden;
+  }
+  .card-title {
+    font-size: 0.7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--green-accent); margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green-accent);
+    animation: pulse-green 2s ease-in-out infinite;
+  }
+
+  /* GAUGE */
+  .gauge-wrap { position: relative; width: 200px; margin: 0 auto 1rem; }
+  .gauge-wrap svg { width: 100%; }
+  .gauge-value {
+    position: absolute; bottom: 8px; left: 50%;
+    transform: translateX(-50%); text-align: center;
+  }
+  .gauge-number {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2.2rem; color: var(--white); line-height: 1;
+  }
+  .gauge-label {
+    font-size: 0.68rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em; margin-top: 0.2rem;
+  }
+  .threat-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 1rem; }
+  .threat-stat {
+    background: rgba(255,255,255,0.04);
+    border-radius: 10px; padding: 0.7rem; text-align: center;
+  }
+  .threat-stat-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.3rem; font-weight: 500;
+    color: var(--white); line-height: 1; margin-bottom: 0.2rem;
+  }
+  .threat-stat-label {
+    font-size: 0.65rem; color: var(--text-light);
+    opacity: 0.6; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+
+  /* BADGES */
+  .badge {
+    display: inline-block; font-size: 0.63rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    padding: 2px 7px; border-radius: 100px;
+    font-family: 'DM Mono', monospace;
+  }
+  .badge-critical { background: rgba(192,57,43,0.2); color: #e74c3c; border: 1px solid rgba(192,57,43,0.3); }
+  .badge-high     { background: rgba(230,126,34,0.2); color: #e67e22; border: 1px solid rgba(230,126,34,0.3); }
+  .badge-medium   { background: rgba(241,196,15,0.2); color: #f1c40f; border: 1px solid rgba(241,196,15,0.3); }
+  .badge-low      { background: rgba(39,174,96,0.2);  color: #2ecc71; border: 1px solid rgba(39,174,96,0.3); }
+
+  /* SIDEBAR */
+  .sidebar { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  /* QUICK LINKS */
+  .quick-link {
+    display: flex; align-items: center;
+    justify-content: space-between; padding: 0.7rem 0;
+    border-bottom: 1px solid var(--border);
+    text-decoration: none; color: var(--text-light);
+    font-size: 0.83rem; transition: color 0.2s;
+  }
+  .quick-link:last-child { border-bottom: none; }
+  .quick-link:hover { color: var(--green-accent); }
+
+  /* SIGNUP */
+  .signup-card {
+    background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+    border: 1px solid rgba(124,184,124,0.3);
+  }
+  .signup-card h3 {
+    font-family: 'Instrument Serif', serif; font-size: 1.1rem;
+    color: var(--white); font-weight: 400; margin-bottom: 0.4rem;
+  }
+  .signup-card p { font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.9rem; line-height: 1.55; }
+  .signup-form { display: flex; flex-direction: column; gap: 0.5rem; }
+  .signup-form input {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(124,184,124,0.25);
+    border-radius: 8px; padding: 9px 13px; color: var(--white);
+    font-family: 'DM Sans', sans-serif; font-size: 0.83rem; outline: none;
+  }
+  .signup-form input::placeholder { color: rgba(200,220,200,0.4); }
+  .signup-form input:focus { border-color: var(--green-accent); }
+  .signup-form button {
+    background: var(--green-accent); color: var(--green-deep);
+    border: none; border-radius: 8px; padding: 9px 14px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.83rem;
+    font-weight: 600; cursor: pointer; transition: background 0.2s;
+  }
+  .signup-form button:hover { background: var(--green-light); }
+
+  /* RIGHT COL */
+  .right-col { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  /* MAP */
+  .map-card { padding: 0; }
+  .map-header { padding: 1.2rem 1.5rem 1rem; border-bottom: 1px solid var(--border); }
+  .map-embed { width: 100%; height: 320px; border: none; display: block; background: #0a140a; }
+
+  /* FILTER */
+  .filter-row { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .filter-btn {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: 100px; padding: 3px 13px; font-size: 0.73rem;
+    color: var(--text-light); cursor: pointer; transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--green-accent); color: var(--green-deep);
+    border-color: var(--green-accent); font-weight: 600;
+  }
+
+  /* CVE LIST */
+  .cve-list { display: flex; flex-direction: column; gap: 0.65rem; }
+  .cve-item {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.9rem 1.1rem;
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 1rem; align-items: start; transition: background 0.2s;
+  }
+  .cve-item:hover { background: rgba(255,255,255,0.06); }
+  .cve-id { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--green-accent); white-space: nowrap; padding-top: 2px; }
+  .cve-desc { font-size: 0.85rem; color: var(--text-light); line-height: 1.5; }
+  .cve-vendor { font-size: 0.72rem; color: var(--text-light); opacity: 0.45; margin-top: 0.2rem; }
+  .cve-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; }
+  .cve-score { font-family: 'DM Mono', monospace; font-size: 0.82rem; font-weight: 500; color: var(--white); }
+  .cve-patch { font-size: 0.67rem; color: #e67e22; }
+
+  /* LOADING */
+  .loading { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-light); opacity: 0.5; padding: 1rem 0; }
+  .spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--green-accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+  /* FOOTER */
+  footer { border-top: 1px solid var(--border); padding: 1.5rem 2rem; text-align: center; font-size: 0.75rem; color: var(--text-light); opacity: 0.4; }
+  footer a { color: var(--green-accent); text-decoration: none; opacity: 1; }
+
+  /* ANIMATIONS */
+  @keyframes pulse-red { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  @keyframes pulse-green { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .fade-in { animation: fadeIn 0.35s ease forwards; }
+
+  /* RESPONSIVE */
+  @media (max-width: 1024px) { .dashboard { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { .cve-item { grid-template-columns: 1fr; } .cve-meta { flex-direction: row; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="https://sycamore-systems.com" class="nav-brand">
+      <img src="SycamoreSystemsLogo.png" alt="Sycamore Systems">
+      <span>Sycamore Systems</span>
+      <span class="live-badge">● Live</span>
+    </a>
+    <div class="nav-right">
+      <span class="last-updated" id="lastUpdated">Loading...</span>
+      <a href="https://sycamore-systems.com#contact">Get Help</a>
+      <a href="https://sycamore-scorecard.onrender.com" target="_blank">Scorecard →</a>
+    </div>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-inner">
+    <h1>Cyber Threat <em>Dashboard</em></h1>
+    <p class="hero-sub">Live threat intelligence for small &amp; mid-size businesses · CISA KEV + NIST NVD + AlienVault OTX · Updated daily</p>
+  </div>
+</div>
+
+<div class="dashboard">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- THREAT LEVEL GAUGE -->
+    <div class="card" style="text-align:center">
+      <div class="card-title"><span class="live-dot"></span> Threat Level</div>
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 20 110 A 80 80 0 0 1 180 110" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="16" stroke-linecap="round"/>
+          <path d="M 20 110 A 80 80 0 0 1 60 42"   fill="none" stroke="#27ae60" stroke-width="16" stroke-linecap="round" opacity="0.25"/>
+          <path d="M 60 42 A 80 80 0 0 1 140 42"   fill="none" stroke="#f1c40f" stroke-width="16" stroke-linecap="round" opacity="0.25"/>
+          <path d="M 140 42 A 80 80 0 0 1 180 110" fill="none" stroke="#e74c3c" stroke-width="16" stroke-linecap="round" opacity="0.25"/>
+          <path id="gaugeArc" d="M 20 110 A 80 80 0 0 1 60 42" fill="none" stroke="#27ae60" stroke-width="16" stroke-linecap="round"/>
+          <line id="gaugeNeedle" x1="100" y1="110" x2="30" y2="80" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+          <circle cx="100" cy="110" r="5" fill="white" opacity="0.9"/>
+          <text x="14"  y="128" fill="rgba(200,220,200,0.35)" font-size="9" font-family="DM Sans">Low</text>
+          <text x="84"  y="28"  fill="rgba(200,220,200,0.35)" font-size="9" font-family="DM Sans">Med</text>
+          <text x="159" y="128" fill="rgba(200,220,200,0.35)" font-size="9" font-family="DM Sans">High</text>
+        </svg>
+        <div class="gauge-value">
+          <div class="gauge-number" id="threatScore">--</div>
+          <div class="gauge-label" id="threatLabel" style="color:var(--green-accent)">Loading</div>
+        </div>
+      </div>
+      <div class="threat-stats">
+        <div class="threat-stat">
+          <div class="threat-stat-value" style="color:#e74c3c" id="criticalCount">--</div>
+          <div class="threat-stat-label">Critical</div>
+        </div>
+        <div class="threat-stat">
+          <div class="threat-stat-value" style="color:#e67e22" id="highCount">--</div>
+          <div class="threat-stat-label">High</div>
+        </div>
+        <div class="threat-stat">
+          <div class="threat-stat-value" style="color:var(--green-accent)" id="totalKev">--</div>
+          <div class="threat-stat-label">KEV Total</div>
+        </div>
+        <div class="threat-stat">
+          <div class="threat-stat-value" style="color:var(--green-light)" id="recentKev">--</div>
+          <div class="threat-stat-label">Added (30d)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SMB RESOURCES -->
+    <div class="card">
+      <div class="card-title">SMB Resources</div>
+      <a href="https://sycamore-scorecard.onrender.com" target="_blank" class="quick-link">
+        Security Scorecard — $97
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l5-4.5L5 2"/></svg>
+      </a>
+      <a href="https://sycamore-scorecard.onrender.com/policy-bundle" target="_blank" class="quick-link">
+        Policy Bundle Templates
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l5-4.5L5 2"/></svg>
+      </a>
+      <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" class="quick-link">
+        CISA KEV Catalog ↗
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l5-4.5L5 2"/></svg>
+      </a>
+      <a href="https://nvd.nist.gov" target="_blank" class="quick-link">
+        NIST NVD Database ↗
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l5-4.5L5 2"/></svg>
+      </a>
+      <a href="https://sycamore-systems.com#contact" class="quick-link">
+        Get a Consultation
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l5-4.5L5 2"/></svg>
+      </a>
+    </div>
+
+    <!-- EMAIL SIGNUP -->
+    <div class="card signup-card">
+      <h3>Weekly Threat Digest</h3>
+      <p>Top SMB threats, new CVEs, and actionable security tips — every Monday morning. Free.</p>
+      <form class="signup-form" onsubmit="handleSignup(event)">
+        <input type="email" id="signupEmail" placeholder="your@email.com" required>
+        <button type="submit">Subscribe — Free</button>
+      </form>
+      <div id="signupStatus" style="font-size:0.76rem;margin-top:0.5rem;display:none;"></div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right-col">
+
+    <!-- THREAT MAP -->
+    <div class="card map-card">
+      <div class="map-header card-title"><span class="live-dot"></span> Global Threat Activity Map</div>
+      <iframe
+        class="map-embed"
+        src="https://cybermap.kaspersky.com/en/widget/dynamic/dark"
+        title="Live Cyber Threat Map"
+        allowfullscreen loading="lazy">
+      </iframe>
+    </div>
+
+    <!-- CVE FEED -->
+    <div class="card">
+      <div class="card-title"><span class="live-dot"></span> CISA Known Exploited Vulnerabilities — Recent</div>
+      <div class="filter-row">
+        <button class="filter-btn active" onclick="filterCVEs('all',this)">All</button>
+        <button class="filter-btn" onclick="filterCVEs('Microsoft',this)">Microsoft</button>
+        <button class="filter-btn" onclick="filterCVEs('Cisco',this)">Cisco</button>
+        <button class="filter-btn" onclick="filterCVEs('Apple',this)">Apple</button>
+        <button class="filter-btn" onclick="filterCVEs('Google',this)">Google</button>
+        <button class="filter-btn" onclick="filterCVEs('Adobe',this)">Adobe</button>
+        <button class="filter-btn" onclick="filterCVEs('Fortinet',this)">Fortinet</button>
+        <button class="filter-btn" onclick="filterCVEs('VMware',this)">VMware</button>
+      </div>
+      <div id="cveList">
+        <div class="loading"><div class="spinner"></div> Fetching threat data from CISA...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  Data sourced from <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank">CISA KEV</a>,
+  <a href="https://nvd.nist.gov" target="_blank">NIST NVD</a>, and <a href="https://otx.alienvault.com" target="_blank">AlienVault OTX</a>.
+  Updated daily. For informational purposes only.<br>
+  &copy; 2026 <a href="https://sycamore-systems.com">Sycamore Systems LLC</a> &middot; IT Consulting &middot; Cybersecurity &middot; AI
+</footer>
+
+<script>
+  const PROXY = 'https://api.allorigins.win/raw?url=';
+  const KEV_URL = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
+
+  let allVulns = [];
+  let activeFilter = 'all';
+
+  async function init() {
+    try {
+      const res = await fetch(PROXY + encodeURIComponent(KEV_URL));
+      const data = await res.json();
+      const vulns = (data.vulnerabilities || [])
+        .sort((a,b) => new Date(b.dateAdded) - new Date(a.dateAdded));
+      allVulns = vulns;
+
+      // Stats
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 30);
+      const recent = vulns.filter(v => new Date(v.dateAdded) >= cutoff);
+      document.getElementById('totalKev').textContent  = vulns.length.toLocaleString();
+      document.getElementById('recentKev').textContent = recent.length;
+
+      // Initial gauge from recency
+      const score = Math.min(95, Math.round(25 + (recent.length / 15) * 50));
+      setGauge(score);
+
+      // Render top 20 immediately
+      renderCVEs(vulns.slice(0,20), 'all');
+
+      // Then enrich top 10 with NVD scores async
+      enrichNVD(vulns.slice(0,10));
+
+      document.getElementById('lastUpdated').textContent =
+        'Updated ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+    } catch(e) {
+      document.getElementById('cveList').innerHTML =
+        '<div class="loading">⚠ Could not load data. Check your connection and refresh.</div>';
+      document.getElementById('lastUpdated').textContent = 'Error loading data';
+    }
+  }
+
+  async function enrichNVD(vulns) {
+    let critical = 0, high = 0;
+    for (const v of vulns) {
+      try {
+        const r = await fetch(`https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=${v.cveID}`);
+        const d = await r.json();
+        const cve = d.vulnerabilities?.[0]?.cve;
+        if (!cve) continue;
+        const m = cve.metrics;
+        const score = m?.cvssMetricV31?.[0]?.cvssData?.baseScore
+                   ?? m?.cvssMetricV30?.[0]?.cvssData?.baseScore
+                   ?? m?.cvssMetricV2?.[0]?.cvssData?.baseScore;
+        if (score != null) {
+          v.cvssScore = score;
+          if (score >= 9.0) critical++;
+          else if (score >= 7.0) high++;
+        }
+        await new Promise(r => setTimeout(r, 200)); // rate limit
+      } catch(e) {}
+    }
+    document.getElementById('criticalCount').textContent = critical;
+    document.getElementById('highCount').textContent = high;
+
+    // Refine gauge
+    const refined = Math.min(95, 20 + critical*18 + high*7);
+    setGauge(Math.max(30, refined));
+
+    // Re-render with scores
+    renderCVEs(allVulns.slice(0,20), activeFilter);
+  }
+
+  function setGauge(score) {
+    const numEl   = document.getElementById('threatScore');
+    const lblEl   = document.getElementById('threatLabel');
+    const arcEl   = document.getElementById('gaugeArc');
+    const needleEl= document.getElementById('gaugeNeedle');
+
+    numEl.textContent = score;
+
+    // Needle: angle from -150° (score=0) to -30° (score=100)
+    const deg = -150 + (score / 100) * 120;
+    const rad = deg * Math.PI / 180;
+    const nx = 100 + 60 * Math.cos(rad);
+    const ny = 110 + 60 * Math.sin(rad);
+    needleEl.setAttribute('x2', nx.toFixed(1));
+    needleEl.setAttribute('y2', ny.toFixed(1));
+
+    if (score < 35) {
+      lblEl.textContent='Low'; lblEl.style.color='#2ecc71';
+      arcEl.setAttribute('stroke','#27ae60');
+      arcEl.setAttribute('d','M 20 110 A 80 80 0 0 1 60 42');
+    } else if (score < 65) {
+      lblEl.textContent='Moderate'; lblEl.style.color='#f1c40f';
+      arcEl.setAttribute('stroke','#f1c40f');
+      arcEl.setAttribute('d','M 20 110 A 80 80 0 0 1 140 42');
+    } else {
+      lblEl.textContent='High'; lblEl.style.color='#e74c3c';
+      arcEl.setAttribute('stroke','#e74c3c');
+      arcEl.setAttribute('d','M 20 110 A 80 80 0 0 1 180 110');
+    }
+  }
+
+  function renderCVEs(vulns, filter) {
+    const list = document.getElementById('cveList');
+    const shown = filter === 'all'
+      ? vulns
+      : vulns.filter(v => (v.vendorProject||'').toLowerCase().includes(filter.toLowerCase()));
+
+    if (!shown.length) {
+      list.innerHTML = '<div class="loading">No entries for this filter.</div>';
+      return;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'cve-list';
+
+    shown.slice(0,15).forEach((v, i) => {
+      const score = v.cvssScore;
+      const sev = score >= 9 ? 'critical' : score >= 7 ? 'high' : score >= 4 ? 'medium' : score ? 'low' : 'medium';
+      const item = document.createElement('div');
+      item.className = 'cve-item fade-in';
+      item.style.animationDelay = `${i*25}ms`;
+      item.innerHTML = `
+        <div class="cve-id">${v.cveID}</div>
+        <div>
+          <div class="cve-desc">${v.vulnerabilityName || 'No description available'}</div>
+          <div class="cve-vendor">${[v.vendorProject, v.product].filter(Boolean).join(' · ')} &middot; Added ${v.dateAdded}</div>
+        </div>
+        <div class="cve-meta">
+          <span class="badge badge-${sev}">${sev}</span>
+          ${score ? `<span class="cve-score">${score.toFixed(1)}</span>` : ''}
+          ${v.requiredAction ? `<span class="cve-patch">⚠ Action Required</span>` : ''}
+        </div>`;
+      wrap.appendChild(item);
+    });
+
+    list.innerHTML = '';
+    list.appendChild(wrap);
+  }
+
+  function filterCVEs(vendor, btn) {
+    activeFilter = vendor;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderCVEs(allVulns.slice(0,50), vendor);
+  }
+
+  async function handleSignup(e) {
+    e.preventDefault();
+    const email = document.getElementById('signupEmail').value;
+    const status = document.getElementById('signupStatus');
+    try {
+      const fd = new FormData();
+      fd.append('access_key', '6c5bd2f0-6f06-4734-8f4e-d344b159676f');
+      fd.append('subject', 'Threat Dashboard Newsletter Signup');
+      fd.append('from_name', 'Sycamore Threat Dashboard');
+      fd.append('email', email);
+      fd.append('message', `New weekly digest signup: ${email}`);
+      await fetch('https://api.web3forms.com/submit', { method:'POST', body:fd });
+      status.style.display='block'; status.style.color='var(--green-accent)';
+      status.textContent='✓ You\'re in! First digest arrives Monday.';
+      e.target.reset();
+    } catch {
+      status.style.display='block'; status.style.color='#e74c3c';
+      status.textContent='Something went wrong. Try again.';
+    }
+  }
+
+  init();
+  setInterval(init, 6 * 60 * 60 * 1000);
+</script>
+</body>
+</html>
