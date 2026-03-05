@@ -1,0 +1,25 @@
+name: Refresh CISA KEV Data
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 6 AM UTC daily
+  workflow_dispatch:        # allow manual trigger
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch CISA KEV data
+        run: |
+          curl -s "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json" -o kev-data.json
+          echo "Fetched $(python3 -c "import json; d=json.load(open('kev-data.json')); print(len(d['vulnerabilities']))" ) vulnerabilities"
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add kev-data.json
+          git diff --cached --quiet || git commit -m "chore: refresh CISA KEV data $(date -u +%Y-%m-%d)"
+          git push

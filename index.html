@@ -435,7 +435,7 @@
 
   async function init() {
     try {
-      const res = await fetch('/api/kev');
+      const res = await fetch('/kev-data.json');
       const data = await res.json();
       const vulns = (data.vulnerabilities || [])
         .sort((a,b) => new Date(b.dateAdded) - new Date(a.dateAdded));
