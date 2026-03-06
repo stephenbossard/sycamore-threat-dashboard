@@ -330,11 +330,11 @@
         </div>
         <div class="threat-stat">
           <div class="threat-stat-value" style="color:var(--green-accent)" id="totalKev">--</div>
-          <div class="threat-stat-label">KEV Total</div>
+          <div class="threat-stat-label">CVEs Tracked</div>
         </div>
         <div class="threat-stat">
           <div class="threat-stat-value" style="color:var(--green-light)" id="recentKev">--</div>
-          <div class="threat-stat-label">Added (30d)</div>
+          <div class="threat-stat-label">High Risk (EPSS)</div>
         </div>
       </div>
     </div>
@@ -350,8 +350,8 @@
         Policy Bundle Templates
         <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l5-4.5L5 2"/></svg>
       </a>
-      <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" class="quick-link">
-        CISA KEV Catalog ↗
+      <a href="https://www.first.org/epss/" target="_blank" class="quick-link">
+        FIRST EPSS Explorer ↗
         <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l5-4.5L5 2"/></svg>
       </a>
       <a href="https://nvd.nist.gov" target="_blank" class="quick-link">
@@ -393,7 +393,7 @@
 
     <!-- CVE FEED -->
     <div class="card">
-      <div class="card-title"><span class="live-dot"></span> CISA Known Exploited Vulnerabilities — Recent</div>
+      <div class="card-title"><span class="live-dot"></span> Top CVEs by Exploit Probability — FIRST EPSS</div>
       <div class="filter-row">
         <button class="filter-btn active" onclick="filterCVEs('all',this)">All</button>
         <button class="filter-btn" onclick="filterCVEs('Microsoft',this)">Microsoft</button>
@@ -421,50 +421,62 @@
 </div>
 
 <footer>
-  Data sourced from <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank">CISA KEV</a>,
+  Data sourced from <a href="https://www.first.org/epss/" target="_blank">FIRST EPSS</a>,
   <a href="https://nvd.nist.gov" target="_blank">NIST NVD</a>, and <a href="https://otx.alienvault.com" target="_blank">AlienVault OTX</a>.
   Updated daily. For informational purposes only.<br>
   &copy; 2026 <a href="https://sycamore-systems.com">Sycamore Systems LLC</a> &middot; IT Consulting &middot; Cybersecurity &middot; AI
 </footer>
 
 <script>
-  // Data served via Cloudflare Pages Functions (no CORS issues)
+  // Data from FIRST EPSS API (CORS-enabled, no proxy needed) + NVD enrichment
 
   let allVulns = [];
   let activeFilter = 'all';
 
   async function init() {
     try {
-      const res = await fetch('/kev-data.json');
+      // Fetch top 100 CVEs by EPSS exploit probability score
+      const res = await fetch('https://api.first.org/data/v1/epss?order=!epss&limit=100');
       const data = await res.json();
-      const vulns = (data.vulnerabilities || [])
-        .sort((a,b) => new Date(b.dateAdded) - new Date(a.dateAdded));
+      const epssItems = data.data || [];
+
+      // Shape into the same structure the rest of the code expects
+      const vulns = epssItems.map(v => ({
+        cveID:      v.cve,
+        epssScore:  parseFloat(v.epss),
+        percentile: parseFloat(v.percentile),
+        dateAdded:  v.date || new Date().toISOString().slice(0,10),
+        vendorProject: '',
+        product:    '',
+        vulnerabilityName: v.cve,
+        shortDescription:  `Exploit probability: ${(parseFloat(v.epss)*100).toFixed(1)}% (${Math.round(parseFloat(v.percentile)*100)}th percentile)`
+      }));
       allVulns = vulns;
 
-      // Stats
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - 30);
-      const recent = vulns.filter(v => new Date(v.dateAdded) >= cutoff);
-      document.getElementById('totalKev').textContent  = vulns.length.toLocaleString();
-      document.getElementById('recentKev').textContent = recent.length;
+      // Stats — use percentile ≥ 0.95 as "high risk" proxy for recent/critical count
+      const highRisk = vulns.filter(v => v.epssScore >= 0.5);
+      document.getElementById('totalKev').textContent  = data.total ? Number(data.total).toLocaleString() : '—';
+      document.getElementById('recentKev').textContent = highRisk.length;
 
-      // Initial gauge from recency
-      const score = Math.min(95, Math.round(25 + (recent.length / 15) * 50));
-      setGauge(score);
+      // Initial gauge from top EPSS score
+      const topScore = vulns[0]?.epssScore ?? 0.5;
+      const gaugeVal = Math.min(95, Math.round(30 + topScore * 60));
+      setGauge(gaugeVal);
 
       // Render top 20 immediately
-      renderCVEs(vulns.slice(0,20), 'all');
+      renderCVEs(vulns.slice(0, 20), 'all');
 
-      // Then enrich top 10 with NVD scores async
-      enrichNVD(vulns.slice(0,10));
+      // Enrich top 10 with NVD CVSS scores async
+      enrichNVD(vulns.slice(0, 10));
 
       document.getElementById('lastUpdated').textContent =
         'Updated ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 
     } catch(e) {
       document.getElementById('cveList').innerHTML =
-        '<div class="loading">⚠ Could not load data. Check your connection and refresh.</div>';
+        '<div class="loading">⚠ Could not load threat data. Check your connection and refresh.</div>';
       document.getElementById('lastUpdated').textContent = 'Error loading data';
+      console.error('init error:', e);
     }
   }
 
@@ -553,8 +565,8 @@
       item.innerHTML = `
         <div class="cve-id">${v.cveID}</div>
         <div>
-          <div class="cve-desc">${v.vulnerabilityName || 'No description available'}</div>
-          <div class="cve-vendor">${[v.vendorProject, v.product].filter(Boolean).join(' · ')} &middot; Added ${v.dateAdded}</div>
+          <div class="cve-desc">${v.shortDescription || v.vulnerabilityName || 'No description available'}</div>
+          <div class="cve-vendor">${[v.vendorProject, v.product].filter(Boolean).join(' · ')}${v.vendorProject || v.product ? ' &middot; ' : ''}Added ${v.dateAdded}</div>
         </div>
         <div class="cve-meta">
           <span class="badge badge-${sev}">${sev}</span>
