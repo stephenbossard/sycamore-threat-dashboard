@@ -1,5 +1,5 @@
 // Cloudflare Pages Function — proxies AlienVault OTX with caching
-const OTX_KEY = '1e6d0121df63f01a5bad26056a8fd7bff07907d27b187a5fc036a25c35f2b95b';
+const OTX_KEY = process.env.OTX_API_KEY || '';
 
 export async function onRequest(context) {
   const cache = caches.default;
