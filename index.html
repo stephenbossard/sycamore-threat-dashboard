@@ -611,7 +611,7 @@
 
   async function fetchOTX() {
     try {
-      const res = await fetch('/api/otx');
+      const res = await fetch('/otx-data.json');
       const data = await res.json();
       const pulses = data.results || [];
       renderOTX(pulses);
