@@ -484,14 +484,25 @@
     let critical = 0, high = 0;
     for (const v of vulns) {
       try {
-        const r = await fetch(`https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=${v.cveID}`);
+        const r = await fetch(`https://cveawg.mitre.org/api/cve/${v.cveID}`);
         const d = await r.json();
-        const cve = d.vulnerabilities?.[0]?.cve;
-        if (!cve) continue;
-        const m = cve.metrics;
-        const score = m?.cvssMetricV31?.[0]?.cvssData?.baseScore
-                   ?? m?.cvssMetricV30?.[0]?.cvssData?.baseScore
-                   ?? m?.cvssMetricV2?.[0]?.cvssData?.baseScore;
+        let score = null;
+        let desc = '';
+        
+        // Extract Description
+        try {
+          desc = d.containers?.cna?.descriptions?.[0]?.value || '';
+        } catch(e) {}
+        if (desc) v.shortDescription = desc.length > 150 ? desc.substring(0, 147) + '...' : desc;
+
+        // Extract CVSS
+        const allMetrics = [...(d.containers?.cna?.metrics || [])];
+        if (d.containers?.adp) d.containers.adp.forEach(a => allMetrics.push(...(a.metrics || [])));
+        for (const m of allMetrics) {
+          if (m.cvssV3_1) score = score || m.cvssV3_1.baseScore;
+          if (m.cvssV3_0) score = score || m.cvssV3_0.baseScore;
+          if (m.cvssV2) score = score || m.cvssV2.baseScore;
+        }
         if (score != null) {
           v.cvssScore = score;
           if (score >= 9.0) critical++;
